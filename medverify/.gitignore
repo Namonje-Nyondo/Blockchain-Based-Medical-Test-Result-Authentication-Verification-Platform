@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment variables — NEVER push this (contains your private key)
+.env
+.env.local
+.env.production
+
+# Hardhat compiled files
+artifacts/
+cache/
+typechain-types/
+
+# Vite cache
+.vite/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VSCode settings
+.vscode/
+
+# Coverage reports
+coverage/
