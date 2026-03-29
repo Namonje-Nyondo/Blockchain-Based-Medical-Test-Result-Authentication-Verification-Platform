@@ -1,12 +1,32 @@
 {
-  "name": "blockchain",
+  "name": "medverify-blockchain",
   "version": "1.0.0",
-  "description": "",
+  "description": "MedVerify Blockchain - Decentralized Medical Document Verification",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "test:watch": "hardhat test --watch",
+    "test:coverage": "hardhat coverage",
+    "deploy": "hardhat run scripts/deploy.ts",
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:ganache": "hardhat run scripts/deploy.ts --network ganache",
+    "node": "hardhat node",
+    "setup-roles": "hardhat run scripts/setup-roles.ts --network localhost",
+    "accounts": "hardhat accounts",
+    "clean": "hardhat clean",
+    "flatten": "hardhat flatten",
+    "typechain": "typechain --target ethers-v6 --out-dir typechain-types './artifacts/contracts/**/*.json'",
+    "docs": "solidity-docgen -i ./contracts -o ./docs"
   },
-  "keywords": [],
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "hardhat",
+    "medical",
+    "verification",
+    "smart-contracts"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {

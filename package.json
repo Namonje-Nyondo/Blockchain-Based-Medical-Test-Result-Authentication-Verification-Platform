@@ -4,7 +4,19 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "cd medverify\\blockchain && npm test",
+    "compile": "cd medverify\\blockchain && npm run compile",
+    "deploy": "cd medverify\\blockchain && npm run deploy",
+    "deploy:local": "cd medverify\\blockchain && npm run deploy:local",
+    "deploy:ganache": "cd medverify\\blockchain && npm run deploy:ganache",
+    "node": "cd medverify\\blockchain && npm run node",
+    "node:console": "cd medverify\\blockchain && npm run node:console",
+    "setup-roles": "cd medverify\\blockchain && npm run setup-roles",
+    "accounts": "cd medverify\\blockchain && npm run accounts",
+    "clean": "cd medverify\\blockchain && npm run clean",
+    "test:coverage": "cd medverify\\blockchain && npm run test:coverage",
+    "test:watch": "cd medverify\\blockchain && npm run test:watch",
+    "install:all": "npm install && cd medverify\\blockchain && npm install"
   },
   "keywords": [],
   "author": "",
