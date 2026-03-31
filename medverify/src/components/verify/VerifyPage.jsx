@@ -41,74 +41,76 @@ export default function VerifyPage({ onNavigate, embedded = false }) {
   const canRun = tab === "upload" ? !!file : hashInput.trim().length > 8;
 
   /* Real blockchain verification with progress animation */
-  const runVerification = async () => {
+const runVerification = async () => {
     setRunning(true);
     setProgress(0);
     setResult(null);
 
-    /* Animate progress bar while we work */
-    const progressSteps = [15, 30, 50, 65, 80];
-    let stepIdx = 0;
     const ticker = setInterval(() => {
-      if (stepIdx < progressSteps.length) {
-        setProgress(progressSteps[stepIdx++]);
-      }
+        setProgress(p => Math.min(p + 15, 80));
     }, 350);
 
     try {
-      let hashToVerify = hashInput.trim();
+        let hashToVerify = hashInput.trim();
 
-      /* If upload tab: hash the file first */
-      if (tab === "upload" && file) {
-        setProgress(20);
-        const hashResult = await hashMedicalFile(file, {});
-        hashToVerify = hashResult.fileHash;
-        setFileHash(hashToVerify);
-        setProgress(50);
-      }
+        // If upload tab: hash the file first (file hash only, no metadata)
+        if (tab === "upload" && file) {
+            setProgress(20);
+            const arrayBuffer = await file.arrayBuffer();
+            const hashBuffer = await window.crypto.subtle.digest("SHA-256", arrayBuffer);
+            hashToVerify = Array.from(new Uint8Array(hashBuffer))
+                .map(b => b.toString(16).padStart(2, "0"))
+                .join("");
+            setFileHash(hashToVerify);
+            setProgress(50);
+        }
 
-      /* Call the smart contract */
-      setProgress(70);
-      const chainResult = await verifyRecord(hashToVerify);
-      setProgress(100);
+        setProgress(70);
 
-      clearInterval(ticker);
-      await new Promise(r => setTimeout(r, 300));
-      setRunning(false);
+        // Convert hex hash to bytes32 for the contract
+        const bytes32Hash = "0x" + hashToVerify.replace(/^0x/, "").padStart(64, "0");
 
-      if (chainResult.isValid) {
-        setResult({
-          authentic: true,
-          title:     "Authentic Medical Record",
-          subtitle:  "Record Hash Validated on HealthChain",
-          issuer:    chainResult.registeredBy,
-          timestamp: chainResult.timestamp.toLocaleString("en-US", {
-            month: "short", day: "numeric", year: "numeric",
-            hour: "2-digit", minute: "2-digit", timeZoneName: "short",
-          }),
-          blocks:    "—",
-          hash:      shortHash(hashToVerify),
-          fullHash:  hashToVerify,
-          network:   "HealthChain Mainnet",
-        });
-      } else {
-        setResult({
-          authentic: false,
-          title:     "Verification Failed",
-          subtitle:  "No matching record found on the blockchain",
-        });
-      }
+        // Use getRecord — it's a view function, no gas needed
+        const chainResult = await verifyRecord(bytes32Hash);
+        
+        clearInterval(ticker);
+        setProgress(100);
+        await new Promise(r => setTimeout(r, 300));
+        setRunning(false);
+
+        if (chainResult.isValid) {
+            setResult({
+                authentic:  true,
+                title:      "Authentic Medical Record",
+                subtitle:   "Record Hash Validated on HealthChain",
+                issuer:     chainResult.registeredBy,
+                timestamp:  new Date(chainResult.timestamp * 1000).toLocaleString("en-US", {
+                    month: "short", day: "numeric", year: "numeric",
+                    hour: "2-digit", minute: "2-digit", timeZoneName: "short",
+                }),
+                blocks:     "—",
+                hash:       shortHash(hashToVerify),
+                fullHash:   hashToVerify,
+                network:    "HealthChain Mainnet",
+            });
+        } else {
+            setResult({
+                authentic: false,
+                title:     "Verification Failed",
+                subtitle:  "No matching record found on the blockchain",
+            });
+        }
     } catch (err) {
-      clearInterval(ticker);
-      setRunning(false);
-      setProgress(0);
-      setResult({
-        authentic: false,
-        title:     "Verification Error",
-        subtitle:  err.reason || err.message || "Could not connect to blockchain.",
-      });
+        clearInterval(ticker);
+        setRunning(false);
+        setProgress(0);
+        setResult({
+            authentic: false,
+            title:     "Verification Error",
+            subtitle:  err.reason || err.message || "Could not connect to blockchain.",
+        });
     }
-  };
+};
 
   const reset = () => {
     setFile(null);

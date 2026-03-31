@@ -46,40 +46,31 @@ export default function LUpload() {
   };
 
   /* Step 3 + 4 + 5: hash metadata → call registerRecord on chain */
-  const submit = async () => {
-    setLoad(true);
-    setTxError(null);
-    try {
-      /* Re-hash with full lab metadata */
-      const final = await hashMedicalFile(file, {
-        labId:    "LAB-0042-HC",
-        issuedBy: "MedChain Lab",
-        network:  "HealthChain Mainnet",
-      });
-      setHashResult(final);
+const submit = async () => {
+  setLoad(true);
+  setTxError(null);
+  try {
+    // ✅ Use the SAME hashResult already computed — don't re-hash!
+    const receipt = await registerRecord({
+      fileHash:     hashResult.fileHash,
+      metadataHash: hashResult.metadataHash,
+      patientId:    address || "PATIENT-UNKNOWN",
+      recordType:   "Lab Result",
+    });
 
-      /* ── Call the smart contract ── */
-      const receipt = await registerRecord({
-        fileHash:     final.fileHash,
-        metadataHash: final.metadataHash,
-        patientId:    address || "PATIENT-UNKNOWN",   // wallet address IS the patient ID on-chain
-        recordType:   "Lab Result",
-      });
-
-      setTxResult(receipt);
-      setDone(true);
-    } catch (err) {
-      console.error("Contract call failed:", err);
-      setTxError(
-        err.reason ||
-        err.message ||
-        "Transaction failed. Check MetaMask and try again."
-      );
-    } finally {
-      setLoad(false);
-    }
-  };
-
+    setTxResult(receipt);
+    setDone(true);
+  } catch (err) {
+    console.error("Contract call failed:", err);
+    setTxError(
+      err.reason ||
+      err.message ||
+      "Transaction failed. Check MetaMask and try again."
+    );
+  } finally {
+    setLoad(false);
+  }
+};
   return (
     <div>
       <TopBar title="Secure Upload" sub="Submit test results to the blockchain" role="laboratory" />
