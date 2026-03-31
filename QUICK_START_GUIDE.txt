@@ -1,0 +1,434 @@
+MEDVERIFY QUICK START GUIDE
+Integration & Deployment Checklist
+
+═══════════════════════════════════════════════════════════════════════════════
+
+BEFORE YOU START
+
+Requirements:
+  ✓ Node.js 18+ (check: node --version)
+  ✓ npm 9+ (check: npm --version)
+  ✓ Git installed
+  ✓ VS Code or similar editor
+  ✓ MetaMask browser extension
+
+Optional (for local blockchain):
+  ✓ Ganache CLI: npm install -g ganache-cli
+  ✓ Hardhat (installed as dev dependency)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+5-MINUTE SETUP
+
+Step 1: Clone & Install
+─────────────────────
+
+cd c:\Users\Typo\Desktop\Cryptography\MedVerify\ Blockchain\ Medical\ Verification\medverify\blockchain\
+npm install
+
+(or from root: npm install --all)
+
+Step 2: Start Local Blockchain
+──────────────────────────────
+
+Option A - Built-in Hardhat Network (Fastest):
+  npm run node
+  
+  Output: Hardhat network running at http://127.0.0.1:8545/
+  Accounts: 19 test accounts generated automatically
+  Persistence: Ephemeral (resets when stopped)
+
+Option B - Localhost Node (For MetaMask):
+  Terminal 1: npm run node
+  (Keep running)
+
+Option C - Ganache (Visual Interface):
+  ganache-cli --deterministic --mnemonic "test test test..."
+  (See NETWORK-CONFIG.md for exact command)
+
+Step 3: Deploy Smart Contract
+──────────────────────────────
+
+Terminal 2 (different from Step 2):
+
+npm run deploy:local
+
+Expected Output:
+  "MedVerifyRegistry deployed at: 0x..."
+  "Deployment auto-saved to deployments/localhost-deployment.json"
+  "[✓] Verified - Contract code matches deployed bytecode"
+
+Step 4: Initialize Roles
+────────────────────────
+
+npm run setup-roles
+
+Expected Output:
+  "[✓] Admin role assigned to: 0x..."
+  "[✓] Lab 1 role assigned to: 0x..."
+  "[✓] Lab 2 role assigned to: 0x..."
+  "[✓] Verifier 1 role assigned to: 0x..."
+  "[✓] Verifier 2 role assigned to: 0x..."
+  "[✓] Pauser role assigned to: 0x..."
+  
+  Roles auto-saved to: deployments/localhost-roles.json
+
+Step 5: Run Tests (Verify Everything Works)
+────────────────────────────────────────────
+
+Terminal 2 (still running blockchain):
+  npm test
+
+Expected Output:
+  ✓ 13 tests passing
+  ✓ 100% statement coverage
+  ✓ Execution time: ~350-900ms
+
+Step 6: Start Frontend
+──────────────────────
+
+Terminal 3 (different from Steps 2 & 2):
+
+cd ../  (back to medverify folder)
+npm run dev
+
+Expected Output:
+  VITE v4.3.9 ready in XXms
+  ➜  Local:   http://localhost:5173/
+
+Step 7: Connect MetaMask
+────────────────────────
+
+1. Open http://localhost:5173/ in your browser
+2. MetaMask should prompt to connect
+3. Click "Connect Wallet"
+4. Select account to connect
+5. Approve connection
+
+If no prompt:
+  a) Refresh page (F5)
+  b) Click MetaMask icon in toolbar
+  c) Select "MedVerify"
+  d) Click "Connect"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+SYSTEM ARCHITECTURE
+
+                        Browser (Frontend)
+                              |
+                        React App (Vite)
+                        http://localhost:5173/
+                              |
+                        Web3.js/Ethers.js
+                     (Wallet Integration)
+                              |
+                         MetaMask
+                    (Signs transactions)
+                              |
+                    Hardhat Node / Ganache
+                  (Local Blockchain RPC)
+                  http://127.0.0.1:8545/
+                              |
+                  MedVerifyRegistry Contract
+                  (Smart Contract Logic)
+                              |
+                    4 Main Functions:
+                    - registerLab()
+                    - registerRecord()
+                    - verifyRecord()
+                    - revokeRecord()
+
+Data Flow Example:
+
+User uploads medical record in UI
+       ↓
+Frontend calls: contract.registerRecord(patientAddr, hash, ipfsLink)
+       ↓
+MetaMask prompts user to sign transaction
+       ↓
+User clicks "Sign"
+       ↓
+Transaction sent to blockchain (localhost:8545)
+       ↓
+Hardhat/Ganache processes transaction (~3 seconds)
+       ↓
+Smart contract executes registerRecord() function
+       ↓
+Event emitted: RecordRegistered()
+       ↓
+Frontend listens for event, updates UI with success
+       ↓
+User sees: "Record registered successfully! Hash: 0x..."
+
+═══════════════════════════════════════════════════════════════════════════════
+
+COMMON WORKFLOWS
+
+Workflow 1: Add a New Lab
+────────────────────────
+
+1. Start blockchain (npm run node)
+2. Deploy contract (npm run deploy:local)
+3. Setup roles (npm run setup-roles)
+4. Run deployment script in Hardhat console:
+
+npm run node:console
+
+(Or hardhat console --network localhost)
+
+Then in console:
+  const registry = await ethers.getContractAt("MedVerifyRegistry", "0x...");
+  const tx = await registry.registerLab(labAddress, "Hospital Name");
+  await tx.wait(); // Wait for confirmation
+  console.log("Lab registered!");
+
+Alternative - Edit scripts/setup-roles.ts and add new lab.
+
+Workflow 2: Register a Medical Record
+──────────────────────────────────────
+
+Via Frontend:
+  1. Navigate to Upload page
+  2. Select file (or drag & drop)
+  3. Click "Upload"
+  4. MetaMask confirms transaction
+  5. Wait ~3 seconds
+  6. See success message with record hash
+
+Via Hardhat Console:
+  npm run node:console
+  
+  const registry = await ethers.getContractAt("MedVerifyRegistry", contractAddr);
+  const hash = ethers.solidityPacked(["string"], ["patient-record-123"]);
+  const tx = await registry.registerRecord(patientAddr, hash, "ipfs://QmX...");
+  await tx.wait();
+  console.log("Record registered:", hash);
+
+Workflow 3: Verify a Record
+────────────────────────────
+
+Via Frontend:
+  1. Navigate to Verify page
+  2. Paste record hash
+  3. Click "Verify"
+  4. System returns: Lab Name, Registration Date, Status
+
+Via Hardhat Console:
+  const registry = await ethers.getContractAt("MedVerifyRegistry", contractAddr);
+  const isValid = await registry.verifyRecord(recordHash);
+  console.log("Record valid:", isValid);
+
+Workflow 4: Revoke a Record (Admin Only)
+──────────────────────────────────────────
+
+Via Frontend (if admin role assigned):
+  1. Navigate to Admin Dashboard
+  2. Find record in registry
+  3. Click "Revoke"
+  4. MetaMask confirms
+  5. Record marked as revoked
+
+Via Hardhat Console (must be admin):
+  const registry = await ethers.getContractAt("MedVerifyRegistry", contractAddr, adminSigner);
+  const tx = await registry.revokeRecord(recordHash);
+  await tx.wait();
+  console.log("Record revoked");
+
+═══════════════════════════════════════════════════════════════════════════════
+
+TROUBLESHOOTING
+
+Issue: MetaMask shows "RPC Error: Invalid Network"
+───────────────────────────────────────────────
+
+Cause: MetaMask not configured for local blockchain
+
+Solution:
+  1. Click MetaMask icon → Settings → Networks
+  2. "Add Network" (bottom of network list)
+  3. Fill in:
+     - Network name: "Hardhat" (or "Localhost")
+     - RPC URL: http://127.0.0.1:8545/
+     - Chain ID: 31337
+     - Currency: ETH
+  4. Click Save
+  5. Refresh page
+
+If still failing:
+  - Check blockchain still running (npm run node in Terminal 1)
+  - Check RPC URL is correct
+  - Try restarting MetaMask (close browser tab, reopen)
+
+Issue: Deployment Fails with "Insufficient Funds"
+──────────────────────────────────────────────────
+
+Cause: Deployment account has no balance in selected network
+
+Solution:
+  1. Check which network you're deploying to: npm run deploy:ganache
+                                             npm run deploy:local
+                                             npm run deploy
+  2. Ensure balance available (check scripts/deploy.ts output)
+  3. For Ganache: Restart with fresh accounts
+     ganache-cli --deterministic
+  4. For Hardhat: Run on ephemeral network (npm run deploy)
+     Always has funds for deployer
+
+Issue: Tests Fail with "Cannot find contract at address"
+────────────────────────────────────────────────────────
+
+Cause: Contract not deployed before tests run
+
+Solution:
+  Tests auto-deploy for each test run. Ensure:
+  1. Blockchain running: npm run node (in different terminal)
+  2. No old contracts: npm run clean (clears artifacts)
+  3. Recompile: npm run compile
+  4. Run tests: npm test
+
+Issue: "npm ERR! ENOENT: no such file or directory"
+───────────────────────────────────────────────────
+
+Cause: npm running from wrong directory
+
+Solution:
+  From root directory:
+    npm test                      (redirects to blockchain folder)
+    npm run deploy:local          (redirects correctly)
+  
+  From blockchain directory:
+    npm test                      (runs directly)
+    npm run deploy:local          (runs directly)
+
+Issue: Frontend Blank/Not Loading at Localhost:5173
+────────────────────────────────────────────────────
+
+Cause: Frontend dev server not started or failed
+
+Solution:
+  1. Terminal 3 (new), not the ones running blockchain
+  2. cd medverify (go to frontend folder, not blockchain)
+  3. npm run dev
+  4. Copy URL from output: http://localhost:5173/
+  5. Paste in browser
+  6. Check console for errors (F12 → Console tab)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+AVAILABLE TEST ACCOUNTS
+
+When you run the blockchain (npm run node), these 20 test accounts are created:
+
+Account 0 (Deployer):
+  Address:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+  PrivateKey: 0xac0974bec39a17e36ba4a6b4d238ff944bacb476c6b8d6c1f02e1a496c68f545
+
+Account 1 (Lab 1):
+  Address:    0x70997970C51812e339D9B73b0245ad59419F807f
+  PrivateKey: 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+
+Account 2 (Lab 2):
+  Address:    0x3C44CdDdB6a900c6671B898609496cAa9ed27f89
+  PrivateKey: 0x5de4111afa1a4b94908f83103db8626f493f6dde1ab5e0d1768eb86f1b3877f7
+
+... (17 more accounts, all deterministically generated)
+
+See deployments/localhost-roles.json for actual account assignments.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+USEFUL COMMANDS REFERENCE
+
+Blockchain Management:
+  npm run node              Start Hardhat network at localhost:8545
+  npm run node:console      Open Hardhat console for direct contract interaction
+  npm run clean             Clean artifacts and cache
+
+Deployment:
+  npm run compile           Compile smart contracts
+  npm run deploy            Deploy to Hardhat (ephemeral) network
+  npm run deploy:local      Deploy to Localhost (persistent) network
+  npm run deploy:ganache    Deploy to Ganache
+
+Roles & Access:
+  npm run setup-roles       Initialize all 6 roles after deployment
+  npm run accounts          List test accounts on current network
+
+Testing & Validation:
+  npm test                  Run 13 tests (expect ~13/13 passing)
+  npm test:watch            Run tests in watch mode (rerun on changes)
+  npm test:coverage         Generate coverage report (expect 100% statements)
+
+Frontend:
+  npm run dev               Start Vite dev server at localhost:5173/
+  npm run build             Build production bundle
+  npm run preview           Preview production build locally
+
+═══════════════════════════════════════════════════════════════════════════════
+
+NEXT STEPS
+
+After Setup Works:
+
+1. Explore Frontend:
+   - Navigate to different pages (Upload, Verify, Dashboard)
+   - Try uploading a test file
+   - Check uploaded records in registry
+   - Connect different MetaMask accounts
+
+2. Inspect Blockchain:
+   - Open Hardhat console: npm run node:console
+   - Query registrations: registry.registrations(recordHash)
+   - Check balances: ethers.provider.getBalance(address)
+   - View transaction history
+
+3. Modify & Test:
+   - Edit test file: test/MedVerifyRegistry.ts
+   - Add new test case
+   - Run tests: npm test
+   - See new test pass/fail
+
+4. Deploy to Different Network:
+   - Try deployment to Ganache: npm run deploy:ganache
+   - Repeat setup-roles: npm run setup-roles
+   - Run tests on Ganache: npm test
+   - Compare gas costs between networks
+
+═══════════════════════════════════════════════════════════════════════════════
+
+GETTING HELP
+
+Documentation Available:
+  - INFRASTRUCTURE.md → Architecture overview
+  - DEPLOYMENT.md → Detailed deployment procedures
+  - TESTING.md → Test strategy and coverage details
+  - NETWORK-CONFIG.md → Network specifications & troubleshooting
+
+Quick Reference:
+  - Check scripts/deploy.ts → Deployment logic
+  - Check scripts/setup-roles.ts → Role initialization logic
+  - Check contracts/MedVerifyRegistry.sol → Smart contract code
+  - Check test/MedVerifyRegistry.ts → All 13 test cases
+
+Asked Questions:
+  1. Check README.md files in each folder
+  2. Check TROUBLESHOOTING section above
+  3. Check code comments in implementation files
+  4. Search documentation for your keyword
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Installation Complete! ✓
+
+You're ready to:
+  ✓ Run blockchain locally
+  ✓ Deploy smart contract
+  ✓ Initialize roles
+  ✓ Run tests
+  ✓ Use frontend app
+  ✓ Connect MetaMask
+
+Start with: npm run node   (then follow steps 1-7)
+
+Happy building!
